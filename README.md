@@ -1,4 +1,4 @@
-# Hosting a Website on AWS EC2 with K3S and traefik
+# Hosting a Website on AWS EC2 with K3S and traefik and then making it secure with let's encrypt
 
 ## Steps to Deploy
 
@@ -35,6 +35,7 @@ sudo apt upgrade
 curl -sfL https://get.k3s.io | sh -
 ```
 ### 5. Check and make sure traefik is running
+
 ```bash
 sudo kubectl get nodes
 sudo kubectl get pods -n kube-system
@@ -91,7 +92,7 @@ sudo kubectl apply -f nginx.yaml
 ```bash
 sudo vi ingress.yaml
 ```
-- Press I and paste the beloew code
+- Press I and paste the below code
 
 ```bash
 apiVersion: networking.k8s.io/v1
@@ -125,8 +126,110 @@ sudo kubectl apply -f ingress.yaml
 - Go to Route 53 on AWS, Click on Hosted Zones.
 - You will get four NS name server.
 - Then update these name server in your domain.
-- Create two records in route 63 hosted zone
+- Create two records in route 53 hosted zone
 - First record subdomain should be blank to point route domain.
 - Second record subdomain should be www .
 - Set your domain, Enter your allotted Public IP and then Map it
-- To check browse your domain name in browser if nginx page is showing then it means its working.
+- To check , browse your domain name in browser if nginx page is showing then it means its working.
+
+# Making it secure 
+
+### 9. Install cert-manager
+
+```bash
+sudo kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.4/cert-manager.yaml
+```
+- Check cert-manager in pods
+
+```bash
+sudo kubectl get pods -n cert-manager
+```
+
+### 10. Create a file cluster-issuer.yaml
+
+```bash
+sudo vi cluster-issuer.yaml
+```
+- Press I and paste the below code
+- Add your email id to manage certificates in below code
+
+```bash
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-http
+spec:
+  acme:
+    email: your-email@example.com  # <-- replace with your email
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-http-key
+    solvers:
+    - http01:
+        ingress:
+          class: traefik
+```
+- Press Ctrl+C and then type ":wq" and press Enter
+- Apply the above file
+
+```bash
+sudo kubectl apply -f cluster-issuer.yaml
+```
+
+### 11. edit you nginx-ingress.yaml for domain names
+
+```bash
+sudo vi nginx-ingress.yaml
+```
+- Press I and paste the below code
+- Edit your domain and subdomain name in below code
+
+```bash
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-http"
+spec:
+  rules:
+  - host: imranx.dpdns.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: nginx-service
+            port:
+              number: 80
+  - host: www.imranx.dpdns.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: nginx-service
+            port:
+              number: 80
+  tls:
+  - hosts:
+    - imranx.dpdns.org
+    - www.imranx.dpdns.org
+    secretName: nginx-cert
+```
+- Press Ctrl+C and then type ":wq" and press Enter
+- Apply the above file
+
+```bash
+sudo kubectl apply -f cluster-issuer.yaml
+```
+### Verfiy that certfiicate get generated
+
+```bash
+sudo kubectl get certificate
+sudo kubectl describe certificate nginx-cert
+sudo kubectl get secret nginx-cert
+```
+Now browse you domain and subdomain and you will see both gets secured

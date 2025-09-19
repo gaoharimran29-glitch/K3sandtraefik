@@ -282,3 +282,5 @@ sudo kubectl get secret nginx-cert
 - Now browse you domain and subdomain and you will see both gets secured
 
 ![secuedweb](images1/websitesecured.png)
+
+- If it still not showing then you should try in incognito mode because sometimes browser is caching old certificate 

@@ -10,9 +10,9 @@
 - Use Putty
 - Allow *HTTP (80), **HTTPS (443), and **SSH (22)*  
 - Launch instance
+  
 ## Launched EC2 Instance
-
-
+![LaunchedEC2instance](images1/ec2instance.png)
 
 ### 2. Connect to EC2 (using PuTTY/SSH)  
 - Download Putty.exe file and install it in your device.
@@ -120,17 +120,28 @@ sudo kubectl apply -f ingress.yaml
 ```
 - To check browse your EC2 public ip in browser if nginx page is showing then it means its working.
 
+![NginxDeployed](images1/webnotsecure1.png)
+
 ### 8. Map Domain with Route 53  
 
 - Register your own domain name.
 - Go to Route 53 on AWS, Click on Hosted Zones.
 - You will get four NS name server.
 - Then update these name server in your domain.
+
+![Nameserver](images1/domainnameserver.png)
+
 - Create two records in route 53 hosted zone
+  
+![Records](images1/route53record.png)
+
 - First record subdomain should be blank to point route domain.
 - Second record subdomain should be www .
-- Set your domain, Enter your allotted Public IP and then Map it
+- Set your domain, Enter your allotted Public IP and then Map it.
 - To check , browse your domain name in browser if nginx page is showing then it means its working.
+
+![Domainnotsecured](images1/domain1notsecure.png)
+![Domainnotsecured](images1/domain2notsecure.png)
 
 # Making it secure 
 
@@ -176,7 +187,7 @@ spec:
 sudo kubectl apply -f cluster-issuer.yaml
 ```
 
-### 11. edit you nginx-ingress.yaml for domain names
+### 11. Edit you nginx-ingress.yaml for domain names
 
 ```bash
 sudo vi nginx-ingress.yaml
@@ -223,8 +234,40 @@ spec:
 - Apply the above file
 
 ```bash
-sudo kubectl apply -f cluster-issuer.yaml
+sudo kubectl apply -f ingress.yaml
 ```
+
+### 12. Create a file certificates.yaml
+
+```bash
+sudo vi cerificates.yaml
+````
+- Press I and paste the below code
+- Edit your domain and subdomain name in below code
+  
+```bash
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: nginx-cert
+  namespace: default
+spec:
+  secretName: nginx-cert
+  dnsNames:
+  - imranx.dpdns.org
+  - www.imranx.dpdns.org
+  issuerRef:
+    name: letsencrypt-http
+    kind: ClusterIssuer
+```
+
+- Press Ctrl+C and then type ":wq" and press Enter
+- Apply the above file
+  
+```bash
+sudo kubectl apply -f certificates.yaml
+```
+
 ### Verfiy that certfiicate get generated
 
 ```bash
@@ -232,4 +275,10 @@ sudo kubectl get certificate
 sudo kubectl describe certificate nginx-cert
 sudo kubectl get secret nginx-cert
 ```
-Now browse you domain and subdomain and you will see both gets secured
+- It will show like this
+
+![certgenerated](images1/certissued.png)
+
+- Now browse you domain and subdomain and you will see both gets secured
+
+![secuedweb](images1/websitesecured.png)
